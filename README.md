@@ -1,11 +1,11 @@
 # Call Stack to PlantUML
 
-This Visual Studio Code extension allows you to copy the current call stack from an active debug session and generate a PlantUML Activity diagram script. You can then visualize the call stack using PlantUML.
+This Visual Studio Code extension allows you to copy the current call stack from an active debug session and generate a PlantUML Activity diagram script organized by package. You can then visualize the call stack using PlantUML.
 
 ## Features
 
-- Copies the call stack from the active debug session
-- Generates a PlantUML Activity diagram script from the call stack
+- Copies the call stack from the user-selected thread in an active debug session
+- Generates a PlantUML Activity diagram script from the call stack, organized by package
 - Stores the generated PlantUML script in the clipboard for easy pasting
 
 ## Installation
@@ -18,8 +18,9 @@ This Visual Studio Code extension allows you to copy the current call stack from
 1. Open a project in Visual Studio Code and start a debug session.
 2. Once you've hit a breakpoint, and the call stack is available, open the Command Palette (Ctrl+Shift+P or Cmd+Shift+P).
 3. Search for and run the "Copy Call Stack to PlantUML" command.
-4. The PlantUML Activity diagram script will be copied to your clipboard.
-5. Paste the script into a PlantUML editor (online or offline) to visualize the Activity diagram.
+4. Select the thread you want to copy the call stack from.
+5. The PlantUML Activity diagram script will be copied to your clipboard, organized by package.
+6. Paste the script into a PlantUML editor (online or offline) to visualize the Activity diagram.
 
 ## Contributing
 
