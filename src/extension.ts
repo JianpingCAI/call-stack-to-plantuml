@@ -66,7 +66,7 @@ function callStackToPlantUML_v1(callStack: DebugProtocol.StackFrame[]): string {
   return plantUMLScript;
 }
 
-function callStackToPlantUML(callStack: DebugProtocol.StackFrame[]): string {
+function callStackToPlantUML_v2(callStack: DebugProtocol.StackFrame[]): string {
   // Reverse the order of the callStack array
   const reversedCallStack = callStack.slice().reverse();
 
@@ -74,6 +74,41 @@ function callStackToPlantUML(callStack: DebugProtocol.StackFrame[]): string {
   const framesByPackage = reversedCallStack.reduce((groups, frame) => {
     const packageName =
       frame.source?.path?.split("/").slice(0, -1).join("/") || "Unknown";
+    if (!groups[packageName]) {
+      groups[packageName] = [];
+    }
+    groups[packageName].push(frame);
+    return groups;
+  }, {} as Record<string, DebugProtocol.StackFrame[]>);
+
+  let plantUMLScript = "@startuml\n";
+  plantUMLScript += "start\n";
+
+  for (const packageName in framesByPackage) {
+    plantUMLScript += `partition ${packageName} {\n`;
+    for (const frame of framesByPackage[packageName]) {
+      plantUMLScript += `  :${frame.name};\n`;
+    }
+    plantUMLScript += "}\n";
+  }
+
+  plantUMLScript += "stop\n";
+  plantUMLScript += "@enduml";
+
+  return plantUMLScript;
+}
+
+function callStackToPlantUML(callStack: DebugProtocol.StackFrame[]): string {
+  // Reverse the order of the callStack array
+  const reversedCallStack = callStack.slice().reverse();
+
+  // Group the frames by package
+  const framesByPackage = reversedCallStack.reduce((groups, frame) => {
+    const absolutePath = frame.source?.path || "";
+    const packageName =
+      vscode.workspace.asRelativePath(
+        absolutePath.split("/").slice(0, -1).join("/")
+      ) || "Unknown";
     if (!groups[packageName]) {
       groups[packageName] = [];
     }
