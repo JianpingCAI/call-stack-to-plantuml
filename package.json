@@ -1,0 +1,55 @@
+{
+  "name": "call-stack-to-plantuml",
+  "displayName": "call-stack-to-plantuml",
+  "description": "Convert the CALL STACK information into PlantUML script",
+  "version": "0.0.1",
+  "publisher": "JianpingCai",
+  "engines": {
+    "vscode": "^1.76.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "homepage": "https://github.com/JianpingCAI/call-stack-to-plantuml/blob/master/README.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JianpingCAI/call-stack-to-plantuml.git"
+  },
+  "bugs": {
+    "url": "https://github.com/JianpingCAI/call-stack-to-plantuml/issues"
+  },
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "extension.copyCallStackToPlantUML",
+        "title": "Copy Call Stack to PlantUML"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.76.0",
+    "@typescript-eslint/eslint-plugin": "^5.53.0",
+    "@typescript-eslint/parser": "^5.53.0",
+    "@vscode/test-electron": "^2.2.3",
+    "eslint": "^8.34.0",
+    "glob": "^8.1.0",
+    "mocha": "^10.2.0",
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "vscode-debugprotocol": "^1.51.0"
+  }
+}
