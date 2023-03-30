@@ -3,13 +3,59 @@
 import * as vscode from "vscode";
 import { DebugProtocol } from "vscode-debugprotocol";
 
-async function getCallStackInfo(
+async function getCallStackInfo_old(
   session: vscode.DebugSession
 ): Promise<DebugProtocol.StackFrame[]> {
   const callStack: DebugProtocol.StackFrame[] = [];
 
   const threadsResponse = await session.customRequest("threads");
   const threadId = threadsResponse.threads[0].id;
+  const stackTraceResponse = await session.customRequest("stackTrace", {
+    threadId,
+  });
+
+  callStack.push(...stackTraceResponse.stackFrames);
+
+  return callStack;
+}
+
+// Add this new type above the getCallStackInfo function
+type ThreadQuickPickItem = {
+  label: string;
+  description: string;
+  thread: DebugProtocol.Thread;
+};
+
+async function getCallStackInfo(
+  session: vscode.DebugSession
+): Promise<DebugProtocol.StackFrame[]> {
+  const callStack: DebugProtocol.StackFrame[] = [];
+
+  const threadsResponse = await session.customRequest("threads");
+
+  // Check if there are threads
+  if (!threadsResponse.threads || threadsResponse.threads.length === 0) {
+    vscode.window.showErrorMessage("No threads available.");
+    return callStack;
+  }
+
+  // Prompt the user to select a thread
+  const selectedThread = await vscode.window.showQuickPick<ThreadQuickPickItem>(
+    threadsResponse.threads.map((thread: DebugProtocol.Thread) => ({
+      label: thread.name,
+      description: `Thread ID: ${thread.id}`,
+      thread,
+    })),
+    { placeHolder: "Select a thread" }
+  );
+
+  // Check if the user selected a thread
+  if (!selectedThread) {
+    vscode.window.showInformationMessage("No thread selected.");
+    return callStack;
+  }
+
+  const threadId = selectedThread.thread.id;
   const stackTraceResponse = await session.customRequest("stackTrace", {
     threadId,
   });
