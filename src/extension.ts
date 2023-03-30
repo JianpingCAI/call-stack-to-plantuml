@@ -3,22 +3,6 @@
 import * as vscode from "vscode";
 import { DebugProtocol } from "vscode-debugprotocol";
 
-async function getCallStackInfo_old(
-  session: vscode.DebugSession
-): Promise<DebugProtocol.StackFrame[]> {
-  const callStack: DebugProtocol.StackFrame[] = [];
-
-  const threadsResponse = await session.customRequest("threads");
-  const threadId = threadsResponse.threads[0].id;
-  const stackTraceResponse = await session.customRequest("stackTrace", {
-    threadId,
-  });
-
-  callStack.push(...stackTraceResponse.stackFrames);
-
-  return callStack;
-}
-
 // Add this new type above the getCallStackInfo function
 type ThreadQuickPickItem = {
   label: string;
@@ -65,12 +49,47 @@ async function getCallStackInfo(
   return callStack;
 }
 
-function callStackToPlantUML(callStack: DebugProtocol.StackFrame[]): string {
+function callStackToPlantUML_v1(callStack: DebugProtocol.StackFrame[]): string {
   let plantUMLScript = "@startuml\n";
   plantUMLScript += "start\n";
 
-  for (const frame of callStack) {
+  // Reverse the order of the callStack array
+  const reversedCallStack = callStack.slice().reverse();
+
+  for (const frame of reversedCallStack) {
     plantUMLScript += `:${frame.name};\n`;
+  }
+
+  plantUMLScript += "stop\n";
+  plantUMLScript += "@enduml";
+
+  return plantUMLScript;
+}
+
+function callStackToPlantUML(callStack: DebugProtocol.StackFrame[]): string {
+  // Reverse the order of the callStack array
+  const reversedCallStack = callStack.slice().reverse();
+
+  // Group the frames by package
+  const framesByPackage = reversedCallStack.reduce((groups, frame) => {
+    const packageName =
+      frame.source?.path?.split("/").slice(0, -1).join("/") || "Unknown";
+    if (!groups[packageName]) {
+      groups[packageName] = [];
+    }
+    groups[packageName].push(frame);
+    return groups;
+  }, {} as Record<string, DebugProtocol.StackFrame[]>);
+
+  let plantUMLScript = "@startuml\n";
+  plantUMLScript += "start\n";
+
+  for (const packageName in framesByPackage) {
+    plantUMLScript += `partition ${packageName} {\n`;
+    for (const frame of framesByPackage[packageName]) {
+      plantUMLScript += `  :${frame.name};\n`;
+    }
+    plantUMLScript += "}\n";
   }
 
   plantUMLScript += "stop\n";
