@@ -49,16 +49,34 @@ async function getCallStackInfo(
   return callStack;
 }
 
+// function getRelativePath(absolutePath: string): string {
+//   const workspaceFolders = vscode.workspace.workspaceFolders;
+//   if (!workspaceFolders) {
+//     return absolutePath;
+//   }
+
+//   for (const wsFolder of workspaceFolders) {
+//     const folderPath = wsFolder.uri.fsPath;
+//     if (absolutePath.startsWith(folderPath)) {
+//       return absolutePath.slice(folderPath.length + 1);
+//     }
+//   }
+
+//   return absolutePath;
+// }
+
 function getRelativePath(absolutePath: string): string {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders) {
     return absolutePath;
   }
 
-  for (const wsFolder of workspaceFolders) {
-    const folderPath = wsFolder.uri.fsPath;
-    if (absolutePath.startsWith(folderPath)) {
-      return absolutePath.slice(folderPath.length + 1);
+  const fileUri = vscode.Uri.file(absolutePath);
+
+  for (const folder of workspaceFolders) {
+    const folderUri = folder.uri;
+    if (fileUri.path.startsWith(folderUri.path)) {
+      return vscode.workspace.asRelativePath(fileUri, false);
     }
   }
 
