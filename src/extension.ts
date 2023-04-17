@@ -49,6 +49,22 @@ async function getCallStackInfo(
   return callStack;
 }
 
+function getRelativePath(absolutePath: string): string {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders) {
+    return absolutePath;
+  }
+
+  for (const wsFolder of workspaceFolders) {
+    const folderPath = wsFolder.uri.fsPath;
+    if (absolutePath.startsWith(folderPath)) {
+      return absolutePath.slice(folderPath.length + 1);
+    }
+  }
+
+  return absolutePath;
+}
+
 function callStackToPlantUML(callStack: DebugProtocol.StackFrame[]): string {
   // Reverse the order of the callStack array
   const reversedCallStack = callStack.slice().reverse();
@@ -60,10 +76,12 @@ function callStackToPlantUML(callStack: DebugProtocol.StackFrame[]): string {
 
   for (const frame of reversedCallStack) {
     const absolutePath = frame.source?.path || "";
-    const packageName =
-      vscode.workspace.asRelativePath(
-        absolutePath.split("/").slice(0, -1).join("/")
-      ) || "Unknown";
+    // const packageName 
+    //   vscode.workspace.asRelativePath(
+    //     absolutePath.split("/").slice(0, -1).join("/")
+    //   ) || "Unknown";
+    const relativePath = getRelativePath(absolutePath);
+    const packageName = relativePath.split("/").slice(0, -1).join("/") || "Unknown";
 
     if (currentPackage !== packageName) {
       if (currentPackage !== null) {
