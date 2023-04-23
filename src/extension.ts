@@ -1,15 +1,18 @@
 // The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import { DebugProtocol } from "vscode-debugprotocol";
 
-// Add this new type above the getCallStackInfo function
 type ThreadQuickPickItem = {
   label: string;
   description: string;
   thread: DebugProtocol.Thread;
 };
 
+/**
+ * Get the call stack information from the debug session.
+ * @param session The debug session.
+ * @returns The call stack information.
+ */
 async function getCallStackInfo(
   session: vscode.DebugSession
 ): Promise<DebugProtocol.StackFrame[]> {
@@ -49,22 +52,11 @@ async function getCallStackInfo(
   return callStack;
 }
 
-// function getRelativePath(absolutePath: string): string {
-//   const workspaceFolders = vscode.workspace.workspaceFolders;
-//   if (!workspaceFolders) {
-//     return absolutePath;
-//   }
-
-//   for (const wsFolder of workspaceFolders) {
-//     const folderPath = wsFolder.uri.fsPath;
-//     if (absolutePath.startsWith(folderPath)) {
-//       return absolutePath.slice(folderPath.length + 1);
-//     }
-//   }
-
-//   return absolutePath;
-// }
-
+/**
+ * Get the relative path of a file.
+ * @param absolutePath The absolute path of the file. 
+ * @returns The relative path of the file. 
+ */
 function getRelativePath(absolutePath: string): string {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders) {
@@ -83,6 +75,11 @@ function getRelativePath(absolutePath: string): string {
   return absolutePath;
 }
 
+/**
+ * Convert the call stack to a PlantUML script of an Activity Diagram. 
+ * @param callStack The call stack. 
+ * @returns The PlantUML script. 
+ */
 function callStackToPlantUML(callStack: DebugProtocol.StackFrame[]): string {
   // Reverse the order of the callStack array
   const reversedCallStack = callStack.slice().reverse();
@@ -94,10 +91,6 @@ function callStackToPlantUML(callStack: DebugProtocol.StackFrame[]): string {
 
   for (const frame of reversedCallStack) {
     const absolutePath = frame.source?.path || "";
-    // const packageName 
-    //   vscode.workspace.asRelativePath(
-    //     absolutePath.split("/").slice(0, -1).join("/")
-    //   ) || "Unknown";
     const relativePath = getRelativePath(absolutePath);
     const packageName = relativePath.split("/").slice(0, -1).join("/") || "Unknown";
 
@@ -122,7 +115,10 @@ function callStackToPlantUML(callStack: DebugProtocol.StackFrame[]): string {
   return plantUMLScript;
 }
 
-
+/**
+ * Copy the PlantUML script of an Activity Diagram to the clipboard.
+ * @returns A promise that resolves when the PlantUML script is copied to the clipboard.   
+ */
 async function copyCallStackToPlantUML() {
   // Check if there is an active debug session
   const session = vscode.debug.activeDebugSession;
