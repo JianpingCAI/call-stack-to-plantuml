@@ -77,19 +77,19 @@ function getRelativePath(absolutePath: string): string {
 
 /**
  * Convert the call stack to a PlantUML script of an Activity Diagram. 
- * @param callStack The call stack. 
+ * @param callStackFrames The call stack. 
  * @returns The PlantUML script. 
  */
-function callStackToPlantUML(callStack: DebugProtocol.StackFrame[]): string {
+function callStackToPlantUML(callStackFrames: DebugProtocol.StackFrame[]): string {
   // Reverse the order of the callStack array
-  const reversedCallStack = callStack.slice().reverse();
+  callStackFrames.reverse();
 
   let plantUMLScript = "@startuml\n";
   plantUMLScript += "start\n";
 
   let currentPackage: string | null = null;
 
-  for (const frame of reversedCallStack) {
+  for (const frame of callStackFrames) {
     const absolutePath = frame.source?.path || "";
     const relativePath = getRelativePath(absolutePath);
     const packageName = relativePath.split("/").slice(0, -1).join("/") || "Unknown";
