@@ -2,7 +2,7 @@
   "name": "call-stack-to-plantuml",
   "displayName": "CALL STACK to PlantUML",
   "description": "Convert the CALL STACK information into PlantUML script",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "JianpingCai",
   "engines": {
     "vscode": "^1.76.0"
@@ -22,6 +22,14 @@
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
+      {
+        "command": "extension.recordCallStack",
+        "title": "Record Call Stack"
+      },
+      {
+        "command": "extension.resetCallStackTree",
+        "title": "Clear Recorded Call Stack"
+      },
       {
         "command": "extension.copyCallStackToPlantUML",
         "title": "Copy Call Stack to PlantUML"

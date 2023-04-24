@@ -2,6 +2,19 @@
 import * as vscode from "vscode";
 import { DebugProtocol } from "vscode-debugprotocol";
 
+/**
+ * A node in the call stack tree.
+ */
+class StackFrameNode {
+  frame: DebugProtocol.StackFrame;
+  children: StackFrameNode[];
+
+  constructor(frame: DebugProtocol.StackFrame) {
+    this.frame = frame;
+    this.children = [];
+  }
+}
+
 type ThreadQuickPickItem = {
   label: string;
   description: string;
@@ -9,13 +22,39 @@ type ThreadQuickPickItem = {
 };
 
 /**
- * Get the call stack information from the debug session.
- * @param session The debug session.
- * @returns The call stack information.
+ * Find a node in the call stack tree.
+ * @param node The root node of the call stack tree.
+ * @param frame The frame to find.
+ * @returns
  */
-async function getCallStackInfo(
-  session: vscode.DebugSession
-): Promise<DebugProtocol.StackFrame[]> {
+function findNodeInChildren(
+  node: StackFrameNode,
+  frame: DebugProtocol.StackFrame
+): StackFrameNode | null {
+  if (node.frame && node.frame.id === frame.id) {
+    return node;
+  }
+
+  for (const child of node.children) {
+    const foundNode = findNodeInChildren(child, frame);
+    if (foundNode) {
+      return foundNode;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Record the call stack information from the debug session, and add it to the call stack tree.
+ * @param session The debug session
+ * @param treeRootNode The root node of the call stack tree.
+ * @returns
+ */
+async function recordCallStackInfo(
+  session: vscode.DebugSession,
+  treeRootNode: StackFrameNode
+): Promise<StackFrameNode> {
   const callStack: DebugProtocol.StackFrame[] = [];
 
   const threadsResponse = await session.customRequest("threads");
@@ -23,7 +62,7 @@ async function getCallStackInfo(
   // Check if there are threads
   if (!threadsResponse.threads || threadsResponse.threads.length === 0) {
     vscode.window.showErrorMessage("No threads available.");
-    return callStack;
+    return treeRootNode;
   }
 
   // Prompt the user to select a thread
@@ -39,23 +78,49 @@ async function getCallStackInfo(
   // Check if the user selected a thread
   if (!selectedThread) {
     vscode.window.showInformationMessage("No thread selected.");
-    return callStack;
+    return treeRootNode;
   }
 
   const threadId = selectedThread.thread.id;
+  // Get the call stack of the selected thread
   const stackTraceResponse = await session.customRequest("stackTrace", {
     threadId,
   });
 
   callStack.push(...stackTraceResponse.stackFrames);
+  callStack.reverse();
 
-  return callStack;
+  // Insert the CallFrames of callStack to the tree
+  let currentNode = treeRootNode;
+  let existingNode: StackFrameNode | null = null;
+
+  for (const frame of callStack) {
+    existingNode = findNodeInChildren(currentNode, frame);
+
+    if (existingNode) {
+      currentNode = existingNode;
+    } else {
+      break;
+    }
+  }
+
+  if (!existingNode) {
+    for (const frame of callStack.slice(
+      callStack.indexOf(currentNode.frame) + 1
+    )) {
+      const newNode: StackFrameNode = { frame, children: [] };
+      currentNode.children.push(newNode);
+      currentNode = newNode;
+    }
+  }
+
+  return treeRootNode;
 }
 
 /**
  * Get the relative path of a file.
- * @param absolutePath The absolute path of the file. 
- * @returns The relative path of the file. 
+ * @param absolutePath The absolute path of the file.
+ * @returns The relative path of the file.
  */
 function getRelativePath(absolutePath: string): string {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -76,38 +141,42 @@ function getRelativePath(absolutePath: string): string {
 }
 
 /**
- * Convert the call stack to a PlantUML script of an Activity Diagram. 
- * @param callStackFrames The call stack. 
- * @returns The PlantUML script. 
+ * Convert the call stack to a PlantUML script of an Activity Diagram.
+ * @param callStackFrames The call stack.
+ * @returns The PlantUML script.
  */
-function callStackToPlantUML(callStackFrames: DebugProtocol.StackFrame[]): string {
-  // Reverse the order of the callStack array
-  callStackFrames.reverse();
-
+function callStackToPlantUML(rootStackFrameNode: StackFrameNode): string {
   let plantUMLScript = "@startuml\n";
   plantUMLScript += "start\n";
 
-  let currentPackage: string | null = null;
+  function traverseNode(node: StackFrameNode, indentLevel: number) {
+    const indent = "  ".repeat(indentLevel);
 
-  for (const frame of callStackFrames) {
-    const absolutePath = frame.source?.path || "";
-    const relativePath = getRelativePath(absolutePath);
-    const packageName = relativePath.split("/").slice(0, -1).join("/") || "Unknown";
+    for (const [index, child] of node.children.entries()) {
+      const absolutePath = child.frame.source?.path || "";
+      const relativePath = getRelativePath(absolutePath);
+      const packageName =
+        relativePath.split("/").slice(0, -1).join("/") || "Unknown";
 
-    if (currentPackage !== packageName) {
-      if (currentPackage !== null) {
-        plantUMLScript += "}\n";
+      if (index === 0 && node.children.length > 1) {
+        plantUMLScript += `${indent}split\n`;
+      } else if (index > 0) {
+        plantUMLScript += `${indent}split again\n`;
       }
-      currentPackage = packageName;
-      plantUMLScript += `partition ${packageName} {\n`;
+
+      plantUMLScript += `${indent}partition ${packageName} {\n`;
+      plantUMLScript += `${indent}  :${child.frame.name};\n`;
+      plantUMLScript += `${indent}}\n`;
+
+      traverseNode(child, indentLevel + 1);
     }
 
-    plantUMLScript += `  :${frame.name};\n`;
+    if (node.children.length > 1) {
+      plantUMLScript += `${indent}end split\n`;
+    }
   }
 
-  if (currentPackage !== null) {
-    plantUMLScript += "}\n";
-  }
+  traverseNode(rootStackFrameNode, 1);
 
   plantUMLScript += "stop\n";
   plantUMLScript += "@enduml";
@@ -117,9 +186,9 @@ function callStackToPlantUML(callStackFrames: DebugProtocol.StackFrame[]): strin
 
 /**
  * Copy the PlantUML script of an Activity Diagram to the clipboard.
- * @returns A promise that resolves when the PlantUML script is copied to the clipboard.   
+ * @returns A promise that resolves when the PlantUML script is copied to the clipboard.
  */
-async function copyCallStackToPlantUML() {
+async function copyCallStackToPlantUML(rootStackFrameNode: StackFrameNode) {
   // Check if there is an active debug session
   const session = vscode.debug.activeDebugSession;
   if (!session) {
@@ -127,11 +196,8 @@ async function copyCallStackToPlantUML() {
     return;
   }
 
-  // Get the call stack information
-  const callStack = await getCallStackInfo(session);
-
-  // Convert call stack to PlantUML script
-  const plantUMLScript = callStackToPlantUML(callStack);
+  // Convert call stack tree to PlantUML
+  const plantUMLScript = callStackToPlantUML(rootStackFrameNode);
 
   // Copy the PlantUML script to the clipboard
   vscode.env.clipboard.writeText(plantUMLScript).then(() => {
@@ -141,18 +207,71 @@ async function copyCallStackToPlantUML() {
   });
 }
 
+/**
+ * Reset the call stack tree.
+ * @param rootStackFrameNode The root node of the call stack tree.
+ */
+function resetCallStackTree(rootStackFrameNode: StackFrameNode) {
+  rootStackFrameNode.children = [];
+  vscode.window.showInformationMessage("Call stack tree has been reset.");
+}
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  let disposable = vscode.commands.registerCommand(
-    "extension.copyCallStackToPlantUML",
-    () => {
-      copyCallStackToPlantUML();
+  // Create the root node of the call stack tree
+  const rootStackFrameNode = new StackFrameNode({
+    id: -1,
+    name: "Root",
+  } as DebugProtocol.StackFrame);
+
+  // Register the recordCallStack command
+  let getCallStackDisposable = vscode.commands.registerCommand(
+    "extension.recordCallStack",
+    async () => {
+      const session = vscode.debug.activeDebugSession;
+      if (!session) {
+        vscode.window.showErrorMessage("No active debug session found.");
+        return;
+      }
+
+      await recordCallStackInfo(session, rootStackFrameNode);
     }
   );
+  context.subscriptions.push(getCallStackDisposable);
 
+  // Register the copyCallStackToPlantUML command
+  let disposable = vscode.commands.registerCommand(
+    "extension.copyCallStackToPlantUML",
+    async () => {
+      const session = vscode.debug.activeDebugSession;
+      if (!session) {
+        vscode.window.showErrorMessage("No active debug session found.");
+        return;
+      }
+
+      await recordCallStackInfo(session, rootStackFrameNode);
+      await copyCallStackToPlantUML(rootStackFrameNode);
+    }
+  );
   context.subscriptions.push(disposable);
+
+  // Register the resetCallStackTree command
+  let disposableResetCallStackTree = vscode.commands.registerCommand(
+    "extension.resetCallStackTree",
+    () => {
+      resetCallStackTree(rootStackFrameNode);
+    }
+  );
+  context.subscriptions.push(disposableResetCallStackTree);
+
+  // Reset the call stack tree when a new debug session starts
+  context.subscriptions.push(
+    vscode.debug.onDidStartDebugSession(() => {
+      resetCallStackTree(rootStackFrameNode);
+    })
+  );
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() { }
+export function deactivate() {}
