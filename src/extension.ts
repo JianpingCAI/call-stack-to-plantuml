@@ -104,14 +104,14 @@ async function recordCallStackInfo(
     }
   }
 
-  if (!existingNode) {
-    for (const frame of callStack.slice(
-      callStack.indexOf(currentNode.frame) + 1
-    )) {
-      const newNode: StackFrameNode = { frame, children: [] };
-      currentNode.children.push(newNode);
-      currentNode = newNode;
-    }
+  // Remove the overlapping frames from the callStack
+  const nonOverlappingFrames = callStack.slice(callStack.indexOf(currentNode.frame) + 1);
+
+  // Add the non-overlapping frames to the tree
+  for (const frame of nonOverlappingFrames) {
+    const newNode: StackFrameNode = { frame, children: [] };
+    currentNode.children.push(newNode);
+    currentNode = newNode;
   }
 
   return treeRootNode;
@@ -236,6 +236,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       await recordCallStackInfo(session, rootStackFrameNode);
+      vscode.window.showInformationMessage("Call stack has been recorded.");
     }
   );
   context.subscriptions.push(getCallStackDisposable);
@@ -274,4 +275,4 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
