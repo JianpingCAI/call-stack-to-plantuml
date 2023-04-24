@@ -22,6 +22,24 @@ type ThreadQuickPickItem = {
 };
 
 /**
+ * Compare two frames by their function name, source location.
+ * @param frame1
+ * @param frame2
+ * @returns Returns true if the two frames are equal, false otherwise.
+ */
+function areFramesEqual(
+  frame1: DebugProtocol.StackFrame,
+  frame2: DebugProtocol.StackFrame
+): boolean {
+  return (
+    frame1.name === frame2.name &&
+    frame1.source?.path === frame2.source?.path &&
+    frame1.line === frame2.line &&
+    frame1.column === frame2.column
+  );
+}
+
+/**
  * Find a node in the call stack tree.
  * @param node The root node of the call stack tree.
  * @param frame The frame to find.
@@ -31,7 +49,7 @@ function findNodeInChildren(
   node: StackFrameNode,
   frame: DebugProtocol.StackFrame
 ): StackFrameNode | null {
-  if (node.frame && node.frame.id === frame.id) {
+  if (node.frame && areFramesEqual(node.frame, frame)) {
     return node;
   }
 
@@ -92,20 +110,29 @@ async function recordCallStackInfo(
 
   // Insert the CallFrames of callStack to the tree
   let currentNode = treeRootNode;
-  let existingNode: StackFrameNode | null = null;
+  let overlappedNode: StackFrameNode | null = null;
+  let currentFrame = callStack[0];
+  let hasOverlap=false;
 
   for (const frame of callStack) {
-    existingNode = findNodeInChildren(currentNode, frame);
+    overlappedNode = findNodeInChildren(currentNode, frame);
 
-    if (existingNode) {
-      currentNode = existingNode;
+    if (overlappedNode) {
+      currentNode = overlappedNode;
+      currentFrame = frame;
+      hasOverlap = true;
     } else {
       break;
     }
   }
 
   // Remove the overlapping frames from the callStack
-  const nonOverlappingFrames = callStack.slice(callStack.indexOf(currentNode.frame) + 1);
+  let nonOverlappingFrames = null;
+  if (!hasOverlap) {
+    nonOverlappingFrames = callStack;
+  } else {
+    nonOverlappingFrames = callStack.slice(callStack.indexOf(currentFrame) + 1);
+  }
 
   // Add the non-overlapping frames to the tree
   for (const frame of nonOverlappingFrames) {
@@ -164,9 +191,9 @@ function callStackToPlantUML(rootStackFrameNode: StackFrameNode): string {
         plantUMLScript += `${indent}split again\n`;
       }
 
-      plantUMLScript += `${indent}partition ${packageName} {\n`;
+      // plantUMLScript += `${indent}partition ${packageName} {\n`;
       plantUMLScript += `${indent}  :${child.frame.name};\n`;
-      plantUMLScript += `${indent}}\n`;
+      // plantUMLScript += `${indent}}\n`;
 
       traverseNode(child, indentLevel + 1);
     }
@@ -275,4 +302,4 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() { }
+export function deactivate() {}
