@@ -217,7 +217,7 @@ function callStackToPlantUML(rootStackFrameNode: StackFrameNode): string {
  * @param maxLength The maximum length of a line.
  * @returns 
  */
-function autoWordWrap(plantUmlScript: string, maxLength: number = 30): string {
+function autoWordWrap(plantUmlScript: string, maxLength: number = 29): string {
   const lines = plantUmlScript.split('\n');
   const wrappedLines = lines.map((line) => {
     let wrappedLine = '';
@@ -227,7 +227,6 @@ function autoWordWrap(plantUmlScript: string, maxLength: number = 30): string {
 
     for (let i = 0; i < words.length; i++) {
       const word = words[i];
-      const nextWord = words[i + 1] || '';
 
       if (currentLineLength + word.length + 1 <= maxLength) {
         wrappedLine += word + ' ';
@@ -236,17 +235,13 @@ function autoWordWrap(plantUmlScript: string, maxLength: number = 30): string {
         const breakPoint = word.lastIndexOf(',') + 1;
 
         if (breakPoint > 0) {
-          wrappedLine += word.slice(0, breakPoint) + '\n' + (shouldIndent ? ' ' : '') + word.slice(breakPoint) + ' ';
+          wrappedLine = wrappedLine.trim() + word.slice(0, breakPoint) + '\n' + (shouldIndent ? ' ' : '');
+          wrappedLine += word.slice(breakPoint) + ' ';
           currentLineLength = (shouldIndent ? 1 : 0) + word.slice(breakPoint).length + 1;
         } else {
           wrappedLine += '\n' + (shouldIndent ? ' ' : '') + word + ' ';
           currentLineLength = (shouldIndent ? 1 : 0) + word.length + 1;
         }
-      }
-
-      if (nextWord.includes(',')) {
-        wrappedLine = wrappedLine.trim() + '\n' + (shouldIndent ? ' ' : '');
-        currentLineLength = shouldIndent ? 1 : 0;
       }
     }
 
@@ -255,8 +250,6 @@ function autoWordWrap(plantUmlScript: string, maxLength: number = 30): string {
 
   return wrappedLines.join('\n');
 }
-
-
 
 
 /**
