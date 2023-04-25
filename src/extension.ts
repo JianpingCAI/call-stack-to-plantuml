@@ -212,6 +212,49 @@ function callStackToPlantUML(rootStackFrameNode: StackFrameNode): string {
 }
 
 /**
+ * Auto word wrap the PlantUML script.
+ * @param plantUmlScript The PlantUML script.
+ * @param maxLength The maximum length of a line.
+ * @returns 
+ */
+function autoWordWrap(plantUmlScript: string, maxLength: number = 80): string {
+  const lines = plantUmlScript.split('\n');
+  const wrappedLines = lines.map((line) => {
+    let wrappedLine = '';
+    let currentLineLength = 0;
+    const words = line.split(' ');
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      const nextWord = words[i + 1] || '';
+
+      if (currentLineLength + word.length + 1 <= maxLength) {
+        wrappedLine += word + ' ';
+        currentLineLength += word.length + 1;
+      } else {
+        if (word.includes(',')) {
+          wrappedLine += word + '\n';
+          currentLineLength = 0;
+        } else {
+          wrappedLine += '\n' + word + ' ';
+          currentLineLength = word.length + 1;
+        }
+      }
+
+      if (nextWord.includes(',')) {
+        wrappedLine = wrappedLine.trim() + '\n';
+        currentLineLength = 0;
+      }
+    }
+
+    return wrappedLine.trim();
+  });
+
+  return wrappedLines.join('\n');
+}
+
+
+/**
  * Copy the PlantUML script of an Activity Diagram to the clipboard.
  * @returns A promise that resolves when the PlantUML script is copied to the clipboard.
  */
@@ -225,6 +268,9 @@ async function copyCallStackToPlantUML(rootStackFrameNode: StackFrameNode) {
 
   // Convert call stack tree to PlantUML
   const plantUMLScript = callStackToPlantUML(rootStackFrameNode);
+
+  // Auto word wrap the PlantUML script
+  const autoWordWrappedPlantUMLScript = autoWordWrap(plantUMLScript);
 
   // Copy the PlantUML script to the clipboard
   vscode.env.clipboard.writeText(plantUMLScript).then(() => {
