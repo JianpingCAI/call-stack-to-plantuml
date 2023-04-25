@@ -251,6 +251,13 @@ function autoWordWrap(plantUmlScript: string, maxLength: number = 60): string {
   return wrappedLines.join('\n');
 }
 
+/**
+ * Get the maximum length of a line for word wrapping in the PlantUML diagram.
+ * @returns The maximum length of a line.
+ */
+function getMaxLength(): number {
+  return vscode.workspace.getConfiguration().get('call-stack-to-plantuml.maxLength', 60);
+}
 
 /**
  * Copy the PlantUML script of an Activity Diagram to the clipboard.
@@ -268,7 +275,8 @@ async function copyCallStackToPlantUML(rootStackFrameNode: StackFrameNode) {
   const plantUMLScript = callStackToPlantUML(rootStackFrameNode);
 
   // Auto word wrap the PlantUML script
-  const autoWordWrappedPlantUMLScript = autoWordWrap(plantUMLScript);
+  const maxLength = getMaxLength();
+  const autoWordWrappedPlantUMLScript = autoWordWrap(plantUMLScript, maxLength);
 
   // Copy the PlantUML script to the clipboard
   vscode.env.clipboard.writeText(autoWordWrappedPlantUMLScript).then(() => {

@@ -34,7 +34,17 @@
         "command": "extension.copyCallStackToPlantUML",
         "title": "Copy Call Stack to PlantUML"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Call Stack to PlantUML",
+      "properties": {
+        "call-stack-to-plantuml.maxLength": {
+          "type": "number",
+          "default": 60,
+          "description": "Maximum line length for PlantUML diagrams."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
