@@ -217,7 +217,7 @@ function callStackToPlantUML(rootStackFrameNode: StackFrameNode): string {
  * @param maxLength The maximum length of a line.
  * @returns 
  */
-function autoWordWrap(plantUmlScript: string, maxLength: number = 29): string {
+function autoWordWrap(plantUmlScript: string, maxLength: number = 60): string {
   const lines = plantUmlScript.split('\n');
   const wrappedLines = lines.map((line) => {
     let wrappedLine = '';
