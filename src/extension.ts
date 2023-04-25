@@ -245,7 +245,7 @@ function autoWordWrap(plantUmlScript: string, maxLength: number = 60): string {
       }
     }
 
-    return wrappedLine.trim();
+    return wrappedLine.trimEnd();
   });
 
   return wrappedLines.join('\n');

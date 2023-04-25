@@ -25,7 +25,7 @@ This Visual Studio Code extension allows you to copy the current call stack from
 ### Support of Multiple Call Stack Paths with Additional Commands
 
 1. "Record Call Stack": run this command to store the current call stack, and merge to the existing ones if any.
-2. "Clear Recorded Call Stack": clear the stored call stack info.
+2. "Clear Recorded Call Stack": to clear the stored call stack info.
 
 ### TODO 
 
