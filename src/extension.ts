@@ -223,6 +223,7 @@ function autoWordWrap(plantUmlScript: string, maxLength: number = 80): string {
     let wrappedLine = '';
     let currentLineLength = 0;
     const words = line.split(' ');
+    const shouldIndent = line.trim().startsWith('*');
 
     for (let i = 0; i < words.length; i++) {
       const word = words[i];
@@ -233,17 +234,17 @@ function autoWordWrap(plantUmlScript: string, maxLength: number = 80): string {
         currentLineLength += word.length + 1;
       } else {
         if (word.includes(',')) {
-          wrappedLine += word + '\n';
-          currentLineLength = 0;
+          wrappedLine += word + '\n' + (shouldIndent ? ' ' : '');
+          currentLineLength = shouldIndent ? 1 : 0;
         } else {
-          wrappedLine += '\n' + word + ' ';
-          currentLineLength = word.length + 1;
+          wrappedLine += '\n' + (shouldIndent ? ' ' : '') + word + ' ';
+          currentLineLength = (shouldIndent ? 1 : 0) + word.length + 1;
         }
       }
 
       if (nextWord.includes(',')) {
-        wrappedLine = wrappedLine.trim() + '\n';
-        currentLineLength = 0;
+        wrappedLine = wrappedLine.trim() + '\n' + (shouldIndent ? ' ' : '');
+        currentLineLength = shouldIndent ? 1 : 0;
       }
     }
 
@@ -252,6 +253,7 @@ function autoWordWrap(plantUmlScript: string, maxLength: number = 80): string {
 
   return wrappedLines.join('\n');
 }
+
 
 
 /**
@@ -273,7 +275,7 @@ async function copyCallStackToPlantUML(rootStackFrameNode: StackFrameNode) {
   const autoWordWrappedPlantUMLScript = autoWordWrap(plantUMLScript);
 
   // Copy the PlantUML script to the clipboard
-  vscode.env.clipboard.writeText(plantUMLScript).then(() => {
+  vscode.env.clipboard.writeText(autoWordWrappedPlantUMLScript).then(() => {
     vscode.window.showInformationMessage(
       "PlantUML Activity diagram script copied to clipboard."
     );
