@@ -112,7 +112,7 @@ async function recordCallStackInfo(
   let currentNode = treeRootNode;
   let overlappedNode: StackFrameNode | null = null;
   let currentFrame = callStack[0];
-  let hasOverlap=false;
+  let hasOverlap = false;
 
   for (const frame of callStack) {
     overlappedNode = findNodeInChildren(currentNode, frame);
@@ -212,51 +212,87 @@ function callStackToPlantUML(rootStackFrameNode: StackFrameNode): string {
 }
 
 /**
+ * Merge multiple spaces into one.
+ * @param input
+ * @returns
+ */
+function mergeSpaces(input: string): string {
+  return input.replace(/\s+/g, " ");
+}
+
+/**
  * Auto word wrap the PlantUML script.
  * @param plantUmlScript The PlantUML script.
  * @param maxLength The maximum length of a line.
- * @returns 
+ * @returns
  */
 function autoWordWrap(plantUmlScript: string, maxLength: number = 60): string {
-  const lines = plantUmlScript.split('\n');
-  const wrappedLines = lines.map((line) => {
-    let wrappedLine = '';
+  const lines: string[] = plantUmlScript.split("\n");
+  const wrappedLines: string[] = lines.map((line) => {
+    // Merge multiple spaces into one
+    line = mergeSpaces(line);
+
+    let wrappedResult = "";
     let currentLineLength = 0;
-    const words = line.split(' ');
-    const shouldIndent = line.trim().startsWith('*');
 
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
+    const lineSplits = line.split(" ");
+    for (let i = 0; i < lineSplits.length; i++) {
+      const segment = lineSplits[i];
 
-      if (currentLineLength + word.length + 1 <= maxLength) {
-        wrappedLine += word + ' ';
-        currentLineLength += word.length + 1;
-      } else {
-        const breakPoint = word.lastIndexOf(',') + 1;
+      // If the word can fit in the current line
+      if (currentLineLength + segment.length + 1 <= maxLength) {
+        wrappedResult += segment + " ";
+        currentLineLength += segment.length + 1;
+      }
+      // If the word is too long to fit in the current line
+      else {
+        // Find the last comma in the word
+        const commaBreakPoint = segment.lastIndexOf(",") + 1;
 
-        if (breakPoint > 0) {
-          wrappedLine = wrappedLine.trim() + word.slice(0, breakPoint) + '\n' + (shouldIndent ? ' ' : '');
-          wrappedLine += word.slice(breakPoint) + ' ';
-          currentLineLength = (shouldIndent ? 1 : 0) + word.slice(breakPoint).length + 1;
-        } else {
-          wrappedLine += '\n' + (shouldIndent ? ' ' : '') + word + ' ';
-          currentLineLength = (shouldIndent ? 1 : 0) + word.length + 1;
+        // If there is a comma in the word, break the word at the comma
+        if (commaBreakPoint > 0) {
+          let newLine1 =
+            wrappedResult + " " + segment.slice(0, commaBreakPoint) + "\n";
+          newLine1 = newLine1.startsWith("*") ? " " + newLine1 : newLine1;
+          wrappedResult = newLine1;
+
+          const restSegment = segment.slice(commaBreakPoint);
+          if (restSegment.length !== 0) {
+            let newLine2 = restSegment + " ";
+            newLine2 = newLine2.startsWith("*") ? " " + newLine2 : newLine2;
+
+            wrappedResult += newLine2;
+            currentLineLength = newLine2.length;
+          } else {
+            currentLineLength = 0;
+          }
+        }
+        // If there is no comma in the word, break the word at the last character that can fit in the current line
+        else {
+          wrappedResult += "\n";
+
+          let newLine = segment + " ";
+          newLine = newLine.startsWith("*") ? " " + newLine : newLine;
+          wrappedResult += newLine;
+
+          currentLineLength = newLine.length;
         }
       }
     }
 
-    return wrappedLine.trimEnd();
+    return wrappedResult.trimEnd();
   });
 
-  return wrappedLines.join('\n');
+  return wrappedLines.join("\n");
 }
-
 /**
  * Get the maximum length of a line for word wrapping in the PlantUML diagram.
  * @returns The maximum length of a line.
  */
 function getMaxLength(): number {
-  return vscode.workspace.getConfiguration().get('call-stack-to-plantuml.maxLength', 60);
+  return vscode.workspace
+    .getConfiguration()
+    .get("call-stack-to-plantuml.maxLength", 60);
 }
 
 /**

@@ -2,7 +2,7 @@
   "name": "call-stack-to-plantuml",
   "displayName": "CALL STACK to PlantUML",
   "description": "Convert the CALL STACK information into PlantUML script",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "publisher": "JianpingCai",
   "engines": {
     "vscode": "^1.76.0"
