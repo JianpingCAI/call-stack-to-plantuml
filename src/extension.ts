@@ -1,4 +1,5 @@
 // The module 'vscode' contains the VS Code extensibility API
+import { wrap } from "module";
 import * as vscode from "vscode";
 import { DebugProtocol } from "vscode-debugprotocol";
 
@@ -167,43 +168,74 @@ function getRelativePath(absolutePath: string): string {
   return absolutePath;
 }
 
+function autoWordWrap2(line: string, maxLength: number = 60): string[] {
+  let wrappedLines: string[] = [];
+  let currentLine = "";
+
+  const lineSegments = line.trim().split(" ");
+  for (let i = 0; i < lineSegments.length; i++) {
+    const segment = lineSegments[i];
+
+    // If the segment can fit in the current line
+    if (currentLine.length + segment.length + 1 <= maxLength) {
+      currentLine += segment + " ";
+    }
+    // If the segment is too long to fit in the current line
+    else {
+      if (currentLine.length > 0) {
+        wrappedLines.push(currentLine);
+      }
+      currentLine = segment.startsWith("*") ? " " + segment : segment;
+    }
+  }
+
+  if (currentLine.length > 0) {
+    wrappedLines.push(currentLine.trimEnd());
+  }
+
+  return wrappedLines;
+}
+
 /**
  * Convert the call stack to a PlantUML script of an Activity Diagram.
  * @param callStackFrames The call stack.
  * @returns The PlantUML script.
  */
-function callStackToPlantUML(rootStackFrameNode: StackFrameNode): string {
+function callStackToPlantUML(
+  rootStackFrameNode: StackFrameNode,
+  maxLength: number = 60
+): string {
   let plantUMLScript = "@startuml\n";
   plantUMLScript += "start\n";
 
-  function traverseNode(node: StackFrameNode, indentLevel: number) {
-    const indent = "  ".repeat(indentLevel);
-
+  function traverseNode(node: StackFrameNode) {
     for (const [index, child] of node.children.entries()) {
       const absolutePath = child.frame.source?.path || "";
-      const relativePath = getRelativePath(absolutePath);
-      const packageName =
-        relativePath.split("/").slice(0, -1).join("/") || "Unknown";
+      // const relativePath = getRelativePath(absolutePath);
+      // const packageName =
+      //   relativePath.split("/").slice(0, -1).join("/") || "Unknown";
 
       if (index === 0 && node.children.length > 1) {
-        plantUMLScript += `${indent}split\n`;
+        plantUMLScript += "\nsplit\n\n";
       } else if (index > 0) {
-        plantUMLScript += `${indent}split again\n`;
+        plantUMLScript += "\nsplit again\n\n";
       }
 
       // plantUMLScript += `${indent}partition ${packageName} {\n`;
-      plantUMLScript += `${indent}  :${child.frame.name};\n`;
+      const wrappedLines: string[] = autoWordWrap2(child.frame.name, maxLength);
+      const jointLine = wrappedLines.join("\n");
+      plantUMLScript += `:${jointLine};\n`;
       // plantUMLScript += `${indent}}\n`;
 
-      traverseNode(child, indentLevel + 1);
+      traverseNode(child);
     }
 
     if (node.children.length > 1) {
-      plantUMLScript += `${indent}end split\n`;
+      plantUMLScript += "\nend split\n\n";
     }
   }
 
-  traverseNode(rootStackFrameNode, 1);
+  traverseNode(rootStackFrameNode);
 
   plantUMLScript += "stop\n";
   plantUMLScript += "@enduml";
@@ -220,71 +252,6 @@ function mergeSpaces(input: string): string {
   return input.replace(/\s+/g, " ");
 }
 
-/**
- * Auto word wrap the PlantUML script.
- * @param plantUmlScript The PlantUML script.
- * @param maxLength The maximum length of a line.
- * @returns
- */
-function autoWordWrap(plantUmlScript: string, maxLength: number = 60): string {
-  const lines: string[] = plantUmlScript.split("\n");
-  const wrappedLines: string[] = lines.map((line) => {
-    // Merge multiple spaces into one
-    line = mergeSpaces(line);
-
-    let wrappedResult = "";
-    let currentLineLength = 0;
-
-    const lineSplits = line.split(" ");
-    for (let i = 0; i < lineSplits.length; i++) {
-      const segment = lineSplits[i];
-
-      // If the word can fit in the current line
-      if (currentLineLength + segment.length + 1 <= maxLength) {
-        wrappedResult += segment + " ";
-        currentLineLength += segment.length + 1;
-      }
-      // If the word is too long to fit in the current line
-      else {
-        // Find the last comma in the word
-        const commaBreakPoint = segment.lastIndexOf(",") + 1;
-
-        // If there is a comma in the word, break the word at the comma
-        if (commaBreakPoint > 0) {
-          let newLine1 =
-            wrappedResult + " " + segment.slice(0, commaBreakPoint) + "\n";
-          newLine1 = newLine1.startsWith("*") ? " " + newLine1 : newLine1;
-          wrappedResult = newLine1;
-
-          const restSegment = segment.slice(commaBreakPoint);
-          if (restSegment.length !== 0) {
-            let newLine2 = restSegment + " ";
-            newLine2 = newLine2.startsWith("*") ? " " + newLine2 : newLine2;
-
-            wrappedResult += newLine2;
-            currentLineLength = newLine2.length;
-          } else {
-            currentLineLength = 0;
-          }
-        }
-        // If there is no comma in the word, break the word at the last character that can fit in the current line
-        else {
-          wrappedResult += "\n";
-
-          let newLine = segment + " ";
-          newLine = newLine.startsWith("*") ? " " + newLine : newLine;
-          wrappedResult += newLine;
-
-          currentLineLength = newLine.length;
-        }
-      }
-    }
-
-    return wrappedResult.trimEnd();
-  });
-
-  return wrappedLines.join("\n");
-}
 /**
  * Get the maximum length of a line for word wrapping in the PlantUML diagram.
  * @returns The maximum length of a line.
@@ -307,15 +274,14 @@ async function copyCallStackToPlantUML(rootStackFrameNode: StackFrameNode) {
     return;
   }
 
-  // Convert call stack tree to PlantUML
-  const plantUMLScript = callStackToPlantUML(rootStackFrameNode);
-
   // Auto word wrap the PlantUML script
   const maxLength = getMaxLength();
-  const autoWordWrappedPlantUMLScript = autoWordWrap(plantUMLScript, maxLength);
+
+  // Convert call stack tree to PlantUML
+  const plantUMLScript = callStackToPlantUML(rootStackFrameNode, maxLength);
 
   // Copy the PlantUML script to the clipboard
-  vscode.env.clipboard.writeText(autoWordWrappedPlantUMLScript).then(() => {
+  vscode.env.clipboard.writeText(plantUMLScript).then(() => {
     vscode.window.showInformationMessage(
       "PlantUML Activity diagram script copied to clipboard."
     );
