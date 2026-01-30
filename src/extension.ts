@@ -134,37 +134,45 @@ async function recordCallStackInfo(
 ): Promise<StackFrameNode> {
   const callStack: DebugProtocol.StackFrame[] = [];
 
-  const threadsResponse = await session.customRequest("threads");
+  try {
+    const threadsResponse = await session.customRequest("threads");
 
-  // Check if there are threads
-  if (!threadsResponse.threads || threadsResponse.threads.length === 0) {
-    vscode.window.showErrorMessage("No threads available.");
+    // Check if there are threads
+    if (!threadsResponse.threads || threadsResponse.threads.length === 0) {
+      vscode.window.showErrorMessage("No threads available.");
+      return treeRootNode;
+    }
+
+    // Prompt the user to select a thread
+    const selectedThread = await vscode.window.showQuickPick<ThreadQuickPickItem>(
+      threadsResponse.threads.map((thread: DebugProtocol.Thread) => ({
+        label: thread.name,
+        description: `Thread ID: ${thread.id}`,
+        thread,
+      })),
+      { placeHolder: "Select a thread" }
+    );
+
+    // Check if the user selected a thread
+    if (!selectedThread) {
+      vscode.window.showInformationMessage("No thread selected.");
+      return treeRootNode;
+    }
+
+    const threadId = selectedThread.thread.id;
+    // Get the call stack of the selected thread
+    const stackTraceResponse = await session.customRequest("stackTrace", {
+      threadId,
+    });
+
+    callStack.push(...stackTraceResponse.stackFrames);
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `Failed to retrieve call stack: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
+      `Please ensure the debugger supports the Debug Adapter Protocol and try again.`
+    );
     return treeRootNode;
   }
-
-  // Prompt the user to select a thread
-  const selectedThread = await vscode.window.showQuickPick<ThreadQuickPickItem>(
-    threadsResponse.threads.map((thread: DebugProtocol.Thread) => ({
-      label: thread.name,
-      description: `Thread ID: ${thread.id}`,
-      thread,
-    })),
-    { placeHolder: "Select a thread" }
-  );
-
-  // Check if the user selected a thread
-  if (!selectedThread) {
-    vscode.window.showInformationMessage("No thread selected.");
-    return treeRootNode;
-  }
-
-  const threadId = selectedThread.thread.id;
-  // Get the call stack of the selected thread
-  const stackTraceResponse = await session.customRequest("stackTrace", {
-    threadId,
-  });
-
-  callStack.push(...stackTraceResponse.stackFrames);
   callStack.reverse();
 
   // Insert the CallFrames of callStack to the tree
