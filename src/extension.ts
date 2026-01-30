@@ -359,28 +359,6 @@ function callStackToPlantUML(
 }
 
 /**
- * Merges multiple consecutive whitespace characters into a single space.
- * 
- * This utility function normalizes whitespace in strings by replacing any sequence
- * of whitespace characters (spaces, tabs, newlines, etc.) with a single space.
- * 
- * @param input - The string to normalize
- * @returns The input string with merged whitespace
- * 
- * @example
- * ```typescript
- * mergeSpaces('hello    world\t\ntest');  // returns 'hello world test'
- * ```
- * 
- * @remarks
- * This function is currently defined but not used in the codebase.
- * Consider removing if not needed, or implement where appropriate.
- */
-function mergeSpaces(input: string): string {
-  return input.replace(/\s+/g, " ");
-}
-
-/**
  * Retrieves the maximum line length configuration for PlantUML diagrams.
  * 
  * This function reads the user's configuration setting for maximum line length,
