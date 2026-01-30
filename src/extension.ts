@@ -321,22 +321,15 @@ function callStackToPlantUML(
 
   function traverseNode(node: StackFrameNode) {
     for (const [index, child] of node.children.entries()) {
-      const absolutePath = child.frame.source?.path || "";
-      // const relativePath = getRelativePath(absolutePath);
-      // const packageName =
-      //   relativePath.split("/").slice(0, -1).join("/") || "Unknown";
-
       if (index === 0 && node.children.length > 1) {
         plantUMLScript += "\nsplit\n\n";
       } else if (index > 0) {
         plantUMLScript += "\nsplit again\n\n";
       }
 
-      // plantUMLScript += `${indent}partition ${packageName} {\n`;
       const wrappedLines: string[] = autoWordWrap(child.frame.name, maxLength);
       const jointLine = wrappedLines.join("\n");
       plantUMLScript += `:${jointLine};\n`;
-      // plantUMLScript += `${indent}}\n`;
 
       traverseNode(child);
     }
