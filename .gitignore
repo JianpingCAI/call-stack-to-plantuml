@@ -2,3 +2,5 @@ out
 dist
 node_modules
 .vscode-test/
+test-cpp-project/main
+test-cpp-project/test.puml
