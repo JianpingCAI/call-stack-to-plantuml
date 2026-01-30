@@ -134,37 +134,45 @@ async function recordCallStackInfo(
 ): Promise<StackFrameNode> {
   const callStack: DebugProtocol.StackFrame[] = [];
 
-  const threadsResponse = await session.customRequest("threads");
+  try {
+    const threadsResponse = await session.customRequest("threads");
 
-  // Check if there are threads
-  if (!threadsResponse.threads || threadsResponse.threads.length === 0) {
-    vscode.window.showErrorMessage("No threads available.");
+    // Check if there are threads
+    if (!threadsResponse.threads || threadsResponse.threads.length === 0) {
+      vscode.window.showErrorMessage("No threads available.");
+      return treeRootNode;
+    }
+
+    // Prompt the user to select a thread
+    const selectedThread = await vscode.window.showQuickPick<ThreadQuickPickItem>(
+      threadsResponse.threads.map((thread: DebugProtocol.Thread) => ({
+        label: thread.name,
+        description: `Thread ID: ${thread.id}`,
+        thread,
+      })),
+      { placeHolder: "Select a thread" }
+    );
+
+    // Check if the user selected a thread
+    if (!selectedThread) {
+      vscode.window.showInformationMessage("No thread selected.");
+      return treeRootNode;
+    }
+
+    const threadId = selectedThread.thread.id;
+    // Get the call stack of the selected thread
+    const stackTraceResponse = await session.customRequest("stackTrace", {
+      threadId,
+    });
+
+    callStack.push(...stackTraceResponse.stackFrames);
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `Failed to retrieve call stack: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
+      `Please ensure the debugger supports the Debug Adapter Protocol and try again.`
+    );
     return treeRootNode;
   }
-
-  // Prompt the user to select a thread
-  const selectedThread = await vscode.window.showQuickPick<ThreadQuickPickItem>(
-    threadsResponse.threads.map((thread: DebugProtocol.Thread) => ({
-      label: thread.name,
-      description: `Thread ID: ${thread.id}`,
-      thread,
-    })),
-    { placeHolder: "Select a thread" }
-  );
-
-  // Check if the user selected a thread
-  if (!selectedThread) {
-    vscode.window.showInformationMessage("No thread selected.");
-    return treeRootNode;
-  }
-
-  const threadId = selectedThread.thread.id;
-  // Get the call stack of the selected thread
-  const stackTraceResponse = await session.customRequest("stackTrace", {
-    threadId,
-  });
-
-  callStack.push(...stackTraceResponse.stackFrames);
   callStack.reverse();
 
   // Insert the CallFrames of callStack to the tree
@@ -250,15 +258,11 @@ function getRelativePath(absolutePath: string): string {
  * 
  * @example
  * ```typescript
- * const wrapped = autoWordWrap2('This is a very long function name that needs wrapping', 30);
+ * const wrapped = autoWordWrap('This is a very long function name that needs wrapping', 30);
  * // Returns: ['This is a very long function', 'name that needs wrapping']
  * ```
- * 
- * @remarks
- * This function is named with a '2' suffix, suggesting it may be a revised version.
- * Consider renaming to `wrapText` or `autoWordWrap` for clarity.
  */
-function autoWordWrap2(line: string, maxLength: number = 60): string[] {
+function autoWordWrap(line: string, maxLength: number = 60): string[] {
   let wrappedLines: string[] = [];
   let currentLine = "";
 
@@ -325,22 +329,15 @@ function callStackToPlantUML(
 
   function traverseNode(node: StackFrameNode) {
     for (const [index, child] of node.children.entries()) {
-      const absolutePath = child.frame.source?.path || "";
-      // const relativePath = getRelativePath(absolutePath);
-      // const packageName =
-      //   relativePath.split("/").slice(0, -1).join("/") || "Unknown";
-
       if (index === 0 && node.children.length > 1) {
         plantUMLScript += "\nsplit\n\n";
       } else if (index > 0) {
         plantUMLScript += "\nsplit again\n\n";
       }
 
-      // plantUMLScript += `${indent}partition ${packageName} {\n`;
-      const wrappedLines: string[] = autoWordWrap2(child.frame.name, maxLength);
+      const wrappedLines: string[] = autoWordWrap(child.frame.name, maxLength);
       const jointLine = wrappedLines.join("\n");
       plantUMLScript += `:${jointLine};\n`;
-      // plantUMLScript += `${indent}}\n`;
 
       traverseNode(child);
     }
@@ -359,28 +356,6 @@ function callStackToPlantUML(
 }
 
 /**
- * Merges multiple consecutive whitespace characters into a single space.
- * 
- * This utility function normalizes whitespace in strings by replacing any sequence
- * of whitespace characters (spaces, tabs, newlines, etc.) with a single space.
- * 
- * @param input - The string to normalize
- * @returns The input string with merged whitespace
- * 
- * @example
- * ```typescript
- * mergeSpaces('hello    world\t\ntest');  // returns 'hello world test'
- * ```
- * 
- * @remarks
- * This function is currently defined but not used in the codebase.
- * Consider removing if not needed, or implement where appropriate.
- */
-function mergeSpaces(input: string): string {
-  return input.replace(/\s+/g, " ");
-}
-
-/**
  * Retrieves the maximum line length configuration for PlantUML diagrams.
  * 
  * This function reads the user's configuration setting for maximum line length,
@@ -391,7 +366,7 @@ function mergeSpaces(input: string): string {
  * @example
  * ```typescript
  * const maxLen = getMaxLength();
- * const wrapped = autoWordWrap2(functionName, maxLen);
+ * const wrapped = autoWordWrap(functionName, maxLen);
  * ```
  * 
  * @see Configuration key: `call-stack-to-plantuml.maxLength`
