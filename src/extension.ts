@@ -250,15 +250,11 @@ function getRelativePath(absolutePath: string): string {
  * 
  * @example
  * ```typescript
- * const wrapped = autoWordWrap2('This is a very long function name that needs wrapping', 30);
+ * const wrapped = autoWordWrap('This is a very long function name that needs wrapping', 30);
  * // Returns: ['This is a very long function', 'name that needs wrapping']
  * ```
- * 
- * @remarks
- * This function is named with a '2' suffix, suggesting it may be a revised version.
- * Consider renaming to `wrapText` or `autoWordWrap` for clarity.
  */
-function autoWordWrap2(line: string, maxLength: number = 60): string[] {
+function autoWordWrap(line: string, maxLength: number = 60): string[] {
   let wrappedLines: string[] = [];
   let currentLine = "";
 
@@ -337,7 +333,7 @@ function callStackToPlantUML(
       }
 
       // plantUMLScript += `${indent}partition ${packageName} {\n`;
-      const wrappedLines: string[] = autoWordWrap2(child.frame.name, maxLength);
+      const wrappedLines: string[] = autoWordWrap(child.frame.name, maxLength);
       const jointLine = wrappedLines.join("\n");
       plantUMLScript += `:${jointLine};\n`;
       // plantUMLScript += `${indent}}\n`;
@@ -369,7 +365,7 @@ function callStackToPlantUML(
  * @example
  * ```typescript
  * const maxLen = getMaxLength();
- * const wrapped = autoWordWrap2(functionName, maxLen);
+ * const wrapped = autoWordWrap(functionName, maxLen);
  * ```
  * 
  * @see Configuration key: `call-stack-to-plantuml.maxLength`
