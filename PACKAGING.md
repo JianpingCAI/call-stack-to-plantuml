@@ -4,11 +4,7 @@ This guide explains how to package and distribute the Call Stack to PlantUML VS 
 
 ## Prerequisites
 
-Install the VS Code Extension Manager globally:
-
-```bash
-npm install -g @vscode/vsce
-```
+No additional installation needed! The packaging scripts use `npx` to automatically download and run `@vscode/vsce` when needed.
 
 ## Creating an Extension Installer (.vsix)
 
@@ -23,14 +19,14 @@ npm run package
 This will:
 
 1. Run the `vscode:prepublish` script (compile TypeScript)
-2. Create a `.vsix` file (e.g., `call-stack-to-plantuml-0.0.6.vsix`)
+2. Create a `.vsix` file (e.g., `call-stack-to-plantuml-0.0.7.vsix`)
 
 ### Manual Method
 
 Alternatively, run the packaging command directly:
 
 ```bash
-vsce package
+npx @vscode/vsce package
 ```
 
 ## Installing the Extension Locally
@@ -40,7 +36,7 @@ vsce package
 Install the generated `.vsix` file using the VS Code CLI:
 
 ```bash
-code --install-extension call-stack-to-plantuml-0.0.6.vsix
+code --install-extension call-stack-to-plantuml-0.0.7.vsix
 ```
 
 ### Option 2: VS Code UI
@@ -89,7 +85,7 @@ The generated `.vsix` file can be:
 ### 3. Login with vsce
 
 ```bash
-vsce login YourPublisherName
+npx @vscode/vsce login YourPublisherName
 ```
 
 Enter your Personal Access Token when prompted.
@@ -103,17 +99,17 @@ npm run publish
 Or specify a version bump:
 
 ```bash
-# Patch version (0.0.6 → 0.0.7)
-vsce publish patch
+# Patch version (0.0.7 → 0.0.8)
+npx @vscode/vsce publish patch
 
-# Minor version (0.0.6 → 0.1.0)
-vsce publish minor
+# Minor version (0.0.7 → 0.1.0)
+npx @vscode/vsce publish minor
 
-# Major version (0.0.6 → 1.0.0)
-vsce publish major
+# Major version (0.0.7 → 1.0.0)
+npx @vscode/vsce publish major
 
 # Specific version
-vsce publish 1.0.0
+npx @vscode/vsce publish 1.0.0
 ```
 
 ### 5. Verify Publication
@@ -168,10 +164,12 @@ Add a `LICENSE` file to your project root.
 
 ### ERROR: ENOENT vsce not found
 
-Install vsce globally:
+This should not occur if using the npm scripts or npx commands, as they automatically download `@vscode/vsce`.
+
+Always use `npx @vscode/vsce` instead of `vsce` directly:
 
 ```bash
-npm install -g @vscode/vsce
+npx @vscode/vsce package
 ```
 
 ### Extension not appearing in Marketplace
@@ -183,9 +181,6 @@ npm install -g @vscode/vsce
 ## Useful Commands
 
 ```bash
-# Install vsce globally
-npm install -g @vscode/vsce
-
 # Package without publishing
 npm run package
 
@@ -193,13 +188,13 @@ npm run package
 npm run publish
 
 # Show extension info
-vsce show JianpingCai.call-stack-to-plantuml
+npx @vscode/vsce show JianpingCai.call-stack-to-plantuml
 
 # List all your published extensions
-vsce ls YourPublisherName
+npx @vscode/vsce ls YourPublisherName
 
 # Unpublish an extension (careful!)
-vsce unpublish YourPublisherName.call-stack-to-plantuml
+npx @vscode/vsce unpublish YourPublisherName.call-stack-to-plantuml
 ```
 
 ## Additional Resources
