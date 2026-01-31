@@ -1,12 +1,20 @@
 # Testing Call Stack to PlantUML Extension
 
-This is a test C++ project to demonstrate the Call Stack to PlantUML extension.
+This is a test C++ project to demonstrate the Call Stack to PlantUML extension with classes and templated methods.
 
 ## Project Structure
 
-- `main.cpp` - A simple C++ program with nested function calls
+- `main.cpp` - A C++ program with classes, templates, and nested function calls
 - `.vscode/launch.json` - Debug configuration
 - `.vscode/tasks.json` - Build task configuration
+
+## Key Features
+
+This test project includes:
+- **Classes**: `DataProcessor` and `Container<T>` classes to test object-oriented call patterns
+- **Templated Methods**: Generic functions like `transform<T>()` and `processVector<T>()` 
+- **Special Symbols**: Template syntax with `<>` characters to test PlantUML script generation with special symbols
+- **Nested Calls**: Multiple call paths through class methods
 
 ## How to Test the Extension
 
@@ -16,9 +24,9 @@ This is a test C++ project to demonstrate the Call Stack to PlantUML extension.
 
 ### Step 2: Set Breakpoints
 Set breakpoints at these locations in `main.cpp`:
-- Line 7: Inside `deepFunction()` 
-- Line 18: Inside `pathB()`
-- Line 23: Inside `pathA()`
+- Line 19: Inside `Container<T>::transform<U>()` (templated method)
+- Line 37: Inside `DataProcessor::deepFunction()` 
+- Line 71: Inside `DataProcessor::processVector<T>()` (templated method with vector)
 
 ### Step 3: Start Debugging
 1. Press `F5` to start debugging
@@ -47,7 +55,21 @@ Paste the PlantUML script into:
 
 ## Expected Call Stack Paths
 
-### Path 1: processData(15) → pathA() → pathB() → deepFunction()
+### Path 1: processData(15) → pathA() → pathB() → deepFunction() → Container::transform()
+### Path 2: processData(5) → pathB() → deepFunction() → Container::transform()
+### Path 3: processVector() → Container::transform() (with template instantiation)
+### Path 4: processGeneric() → Container::transform() (free function template)
+
+## Testing Template Symbols
+
+The extension should properly handle function names containing template syntax:
+- `Container<int>::transform<int>()`
+- `Container<double>::transform<double>()`
+- `DataProcessor::processVector<int>()`
+- `processGeneric<double>()`
+
+These names contain `<>` characters which are special characters in PlantUML. The extension should properly escape or handle these when generating the diagram script.
+
 ```
 main
 └── processData
