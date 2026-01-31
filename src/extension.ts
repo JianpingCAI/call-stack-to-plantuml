@@ -60,8 +60,8 @@ function areSameStackFrame(
   return (
     frame1.name === frame2.name &&
     frame1.source?.path === frame2.source?.path &&
-    frame1.line === frame2.line &&
-    frame1.column === frame2.column
+    frame1.line === frame2.line 
+    // && frame1.column === frame2.column
   );
 }
 
