@@ -50,10 +50,10 @@ type ThreadQuickPickItem = {
  * ```typescript
  * const frame1 = { name: 'foo', source: { path: '/src/app.ts' }, line: 10, column: 5 };
  * const frame2 = { name: 'foo', source: { path: '/src/app.ts' }, line: 10, column: 5 };
- * areFramesEqual(frame1, frame2); // returns true
+ * areSameStackFrame(frame1, frame2); // returns true
  * ```
  */
-function areFramesEqual(
+function areSameStackFrame(
   frame1: DebugProtocol.StackFrame,
   frame2: DebugProtocol.StackFrame
 ): boolean {
@@ -69,7 +69,7 @@ function areFramesEqual(
  * Recursively searches for a node in the call stack tree that matches the given frame.
  * 
  * This function performs a depth-first search through the tree to find a node whose
- * frame is equal to the provided frame (using `areFramesEqual`).
+ * frame is equal to the provided frame (using `areSameStackFrame`).
  * 
  * @param node - The node to start searching from (typically the root or a subtree root)
  * @param frame - The stack frame to search for
@@ -87,7 +87,7 @@ function findNodeInChildren(
   node: StackFrameNode,
   frame: DebugProtocol.StackFrame
 ): StackFrameNode | null {
-  if (node.frame && areFramesEqual(node.frame, frame)) {
+  if (node.frame && areSameStackFrame(node.frame, frame)) {
     return node;
   }
 
@@ -114,7 +114,7 @@ function findNodeInChildren(
  * The merging algorithm identifies common prefixes between the new call stack and existing
  * branches in the tree, then appends only the non-overlapping frames.
  * 
- * @param session - The active VS Code debug session
+ * @param activeDebugSession - The active VS Code debug session
  * @param treeRootNode - The root node of the call stack tree to update
  * @returns A promise that resolves to the updated root node
  * 
@@ -129,21 +129,25 @@ function findNodeInChildren(
  * ```
  */
 async function recordCallStackInfo(
-  session: vscode.DebugSession,
+  activeDebugSession: vscode.DebugSession,
   treeRootNode: StackFrameNode
 ): Promise<StackFrameNode> {
-  const callStack: DebugProtocol.StackFrame[] = [];
+  // Array to store the fetched call stack frames
+  const newCallStackFrames: DebugProtocol.StackFrame[] = [];
 
+  // ===== PHASE 1: FETCH CALL STACK FROM DEBUG SESSION =====
   try {
-    const threadsResponse = await session.customRequest("threads");
+    // Request all available threads from the debug adapter
+    const threadsResponse = await activeDebugSession.customRequest("threads");
 
-    // Check if there are threads
+    // Validate that threads exist in the debug session
     if (!threadsResponse.threads || threadsResponse.threads.length === 0) {
       vscode.window.showErrorMessage("No threads available.");
       return treeRootNode;
     }
 
-    // Prompt the user to select a thread
+    // Prompt the user to select a thread from the available threads
+    // This allows debugging multi-threaded applications
     const selectedThread = await vscode.window.showQuickPick<ThreadQuickPickItem>(
       threadsResponse.threads.map((thread: DebugProtocol.Thread) => ({
         label: thread.name,
@@ -153,19 +157,21 @@ async function recordCallStackInfo(
       { placeHolder: "Select a thread" }
     );
 
-    // Check if the user selected a thread
+    // Handle cancellation of thread selection
     if (!selectedThread) {
       vscode.window.showInformationMessage("No thread selected.");
       return treeRootNode;
     }
 
     const threadId = selectedThread.thread.id;
-    // Get the call stack of the selected thread
-    const stackTraceResponse = await session.customRequest("stackTrace", {
+
+    // Request the stack trace for the selected thread using Debug Adapter Protocol
+    const stackTraceResponse = await activeDebugSession.customRequest("stackTrace", {
       threadId,
     });
 
-    callStack.push(...stackTraceResponse.stackFrames);
+    // Extract stack frames from the response
+    newCallStackFrames.push(...stackTraceResponse.stackFrames);
   } catch (error) {
     vscode.window.showErrorMessage(
       `Failed to retrieve call stack: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
@@ -173,39 +179,55 @@ async function recordCallStackInfo(
     );
     return treeRootNode;
   }
-  callStack.reverse();
 
-  // Insert the CallFrames of callStack to the tree
-  let currentNode = treeRootNode;
-  let overlappedNode: StackFrameNode | null = null;
-  let currentFrame = callStack[0];
-  let hasOverlap = false;
+  // Reverse the call stack so it goes from bottom (entry point) to top (current frame)
+  // Debug adapters typically return frames from top to bottom
+  newCallStackFrames.reverse();
 
-  for (const frame of callStack) {
+  // ===== PHASE 2: FIND OVERLAPPING PATH IN EXISTING TREE =====
+  // This algorithm identifies how much of the new call stack already exists in the tree
+  // and determines where to branch off or append new frames
+
+  let currentNode = treeRootNode;  // Start from the root of the tree
+  let overlappedNode: StackFrameNode | null = null;  // Tracks the last matching node found
+  let currentFrame = newCallStackFrames[0];  // Tracks the last matching frame
+  let hasOverlap = false;  // Flag to indicate if any overlap was found
+
+  // Iterate through each frame in the new call stack
+  for (const frame of newCallStackFrames) {
+    // Search for this frame in the children of the current node
     overlappedNode = findNodeInChildren(currentNode, frame);
 
     if (overlappedNode) {
+      // Frame exists in the tree - move down to this node and continue searching
       currentNode = overlappedNode;
       currentFrame = frame;
       hasOverlap = true;
     } else {
+      // Frame not found - we've reached the divergence point
+      // Everything from here onwards is new and should be appended
       break;
     }
   }
 
-  // Remove the overlapping frames from the callStack
+  // ===== PHASE 3: EXTRACT AND APPEND NON-OVERLAPPING FRAMES =====
+  // Calculate which frames need to be added to the tree
   let nonOverlappingFrames = null;
   if (!hasOverlap) {
-    nonOverlappingFrames = callStack;
+    // No overlap found - add entire call stack as a new branch
+    nonOverlappingFrames = newCallStackFrames;
   } else {
-    nonOverlappingFrames = callStack.slice(callStack.indexOf(currentFrame) + 1);
+    // Overlap found - add only frames after the last overlapping frame
+    // This prevents duplicating common call paths in the tree
+    nonOverlappingFrames = newCallStackFrames.slice(newCallStackFrames.indexOf(currentFrame) + 1);
   }
 
-  // Add the non-overlapping frames to the tree
+  // Append the non-overlapping frames as a linear chain to the tree
+  // Each frame becomes a child of the previous one, forming a path
   for (const frame of nonOverlappingFrames) {
     const newNode: StackFrameNode = { frame, children: [] };
-    currentNode.children.push(newNode);
-    currentNode = newNode;
+    currentNode.children.push(newNode);  // Add as child to current node
+    currentNode = newNode;  // Move to the newly created node for next iteration
   }
 
   return treeRootNode;
@@ -303,12 +325,12 @@ function autoWordWrap(line: string, maxLength: number = 60): string[] {
  * - Split/merge constructs for branching execution paths
  * 
  * @param rootStackFrameNode - The root node of the call stack tree
- * @param maxLength - Maximum line length for function names before wrapping (default: 60)
+ * @param maxLineWidth - Maximum line length for function names before wrapping (default: 60)
  * @returns A complete PlantUML script string ready to render
  * 
  * @example
  * ```typescript
- * const plantUML = callStackToPlantUML(rootNode, 60);
+ * const plantUML = convertCallStackToPlantUML(rootNode, 60);
  * // Returns:
  * // @startuml
  * // start
@@ -320,9 +342,9 @@ function autoWordWrap(line: string, maxLength: number = 60): string[] {
  * 
  * @see {@link https://plantuml.com/activity-diagram-beta|PlantUML Activity Diagram Documentation}
  */
-function callStackToPlantUML(
+function convertCallStackToPlantUML(
   rootStackFrameNode: StackFrameNode,
-  maxLength: number = 60
+  maxLineWidth: number = 60
 ): string {
   let plantUMLScript = "@startuml\n";
   plantUMLScript += "start\n";
@@ -335,7 +357,7 @@ function callStackToPlantUML(
         plantUMLScript += "\nsplit again\n\n";
       }
 
-      const wrappedLines: string[] = autoWordWrap(child.frame.name, maxLength);
+      const wrappedLines: string[] = autoWordWrap(child.frame.name, maxLineWidth);
       const jointLine = wrappedLines.join("\n");
       plantUMLScript += `:${jointLine};\n`;
 
@@ -407,10 +429,10 @@ async function copyCallStackToPlantUML(rootStackFrameNode: StackFrameNode) {
   }
 
   // Auto word wrap the PlantUML script
-  const maxLength = getMaxLength();
+  const maxLineWidth = getMaxLength();
 
   // Convert call stack tree to PlantUML
-  const plantUMLScript = callStackToPlantUML(rootStackFrameNode, maxLength);
+  const plantUMLScript = convertCallStackToPlantUML(rootStackFrameNode, maxLineWidth);
 
   // Copy the PlantUML script to the clipboard
   vscode.env.clipboard.writeText(plantUMLScript).then(() => {
@@ -488,13 +510,13 @@ export function activate(context: vscode.ExtensionContext) {
   let disposable = vscode.commands.registerCommand(
     "extension.copyCallStackToPlantUML",
     async () => {
-      const session = vscode.debug.activeDebugSession;
-      if (!session) {
+      const activeDebugSession = vscode.debug.activeDebugSession;
+      if (!activeDebugSession) {
         vscode.window.showErrorMessage("No active debug session found.");
         return;
       }
 
-      await recordCallStackInfo(session, rootStackFrameNode);
+      await recordCallStackInfo(activeDebugSession, rootStackFrameNode);
       await copyCallStackToPlantUML(rootStackFrameNode);
     }
   );
