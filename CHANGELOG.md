@@ -6,17 +6,24 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/), and this 
 
 ## [Unreleased]
 
+## [0.0.7] - 2026-01-31
+
 ### Added
 - Comprehensive JSDoc documentation for all functions and classes
 - Improved README with examples, use cases, and troubleshooting
 - Better error messages and user feedback
+- Auto-reset documentation in README
 
 ### Changed
+- Migrated packaging to use `npx @vscode/vsce` instead of global installation
 - Enhanced word wrapping algorithm documentation
 - Improved code organization and structure
+- Relaxed stack frame matching to ignore column differences for better flexibility
 
 ### Fixed
 - Removed unused imports
+- Updated PACKAGING.md with npx-only approach
+- Node.js compatibility documentation
 
 ## [0.0.6] - 2024
 

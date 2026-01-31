@@ -6,14 +6,15 @@
 
 A Visual Studio Code extension that captures call stacks from debug sessions and converts them into PlantUML Activity Diagrams, helping you visualize and document complex execution flows.
 
-## 🎯 Features
+## �🎯 Features
 
 ### Core Capabilities
 
 - **📸 Capture Call Stacks**: Extract call stack information from any active debug session
 - **🎨 Generate PlantUML Diagrams**: Automatically convert call stacks into PlantUML Activity Diagram syntax
 - **🌳 Multi-Path Support**: Record multiple call stack paths and intelligently merge them into a tree structure
-- **📋 Clipboard Integration**: Copy generated PlantUML scripts directly to your clipboard
+- **� Auto-Reset on New Session**: Automatically clears recorded call stacks when starting a new debug session
+- **�📋 Clipboard Integration**: Copy generated PlantUML scripts directly to your clipboard
 - **🔧 Configurable**: Customize diagram line length for optimal readability
 - **🧵 Thread Selection**: Choose which thread to capture when debugging multi-threaded applications
 
@@ -72,7 +73,7 @@ For applications with multiple execution paths (e.g., conditional branches, call
 1. **Record First Path**:
    - Hit first breakpoint
    - Run **"Record Call Stack"**
-   
+
 2. **Record Additional Paths**:
    - Continue execution (`F5`)
    - Hit another breakpoint (different path)
@@ -84,21 +85,25 @@ For applications with multiple execution paths (e.g., conditional branches, call
    - The extension merges all paths into a unified diagram
 
 4. **Clear When Done**:
-   - Run **"Clear Recorded Call Stack"** to reset for next session
+   - Run **"Clear Recorded Call Stack"** to reset manually
+   - **Note**: The extension automatically resets when you start a new debug session
 
 ### PlantUML Visualization
 
 Once you've copied the PlantUML script, visualize it using:
 
 #### Online Editors
+
 - [PlantUML Web Server](http://www.plantuml.com/plantuml/uml/)
 - [PlantText](https://www.planttext.com/)
 
 #### VS Code Extensions
+
 - [PlantUML](https://marketplace.visualstudio.com/items?itemName=jebbs.plantuml) by jebbs
 - [Markdown Preview Enhanced](https://marketplace.visualstudio.com/items?itemName=shd101wyy.markdown-preview-enhanced)
 
 #### Local Rendering
+
 ```bash
 # Install PlantUML locally
 brew install plantuml  # macOS
@@ -126,10 +131,10 @@ Configure the extension in your VS Code `settings.json`:
 
 ### Accessing Settings
 
-1. **Via UI**: 
+1. **Via UI**:
    - Open Settings (`Ctrl+,` / `Cmd+,`)
    - Search for "call-stack-to-plantuml"
-   
+
 2. **Via settings.json**:
    - Open Command Palette
    - Type "Preferences: Open User Settings (JSON)"
@@ -138,6 +143,7 @@ Configure the extension in your VS Code `settings.json`:
 ### Example Configurations
 
 **Compact Diagrams** (for wide displays):
+
 ```json
 {
   "call-stack-to-plantuml.maxLength": 100
@@ -145,6 +151,7 @@ Configure the extension in your VS Code `settings.json`:
 ```
 
 **Narrow Diagrams** (for documentation):
+
 ```json
 {
   "call-stack-to-plantuml.maxLength": 40
@@ -156,11 +163,13 @@ Configure the extension in your VS Code `settings.json`:
 ### Example Output
 
 **Captured Call Stack:**
+
 ```
 main() → processData() → validateInput() → sanitizeString()
 ```
 
 **Generated PlantUML:**
+
 ```plantuml
 @startuml
 start
@@ -187,11 +196,13 @@ function main() {
 ```
 
 **Recording Process**:
+
 1. Set breakpoint in `pathA()` → Record
 2. Set breakpoint in `pathB()` → Record
 3. Copy to PlantUML
 
 **Generated Diagram** shows split execution paths:
+
 ```plantuml
 @startuml
 start
@@ -210,18 +221,23 @@ stop
 ## 🎓 Use Cases
 
 ### 1. Debugging Complex Logic
+
 Visualize the actual execution flow through complex nested function calls.
 
 ### 2. Code Documentation
+
 Generate diagrams for documentation that accurately reflect runtime behavior.
 
 ### 3. Performance Analysis
+
 Identify call stack depth and redundant function calls.
 
 ### 4. Code Review
+
 Share execution paths with team members for better code understanding.
 
 ### 5. Learning & Teaching
+
 Help developers understand program flow in unfamiliar codebases.
 
 ## 🔍 Supported Debuggers
@@ -241,18 +257,22 @@ This extension works with any VS Code debugger that implements the Debug Adapter
 ### Common Issues
 
 **No threads available**
+
 - Ensure your debug session is active and paused at a breakpoint
 - Some debuggers may not support thread enumeration
 
 **Call stack not captured**
+
 - Verify you've selected a thread from the dropdown
 - Check that the debugger supports stack trace requests
 
 **Generated diagram looks wrong**
+
 - Try adjusting the `maxLength` configuration
 - Ensure the PlantUML syntax is valid in your editor
 
 **Extension not activating**
+
 - Check VS Code version compatibility (requires `^1.76.0`)
 - Reload VS Code window (`Developer: Reload Window`)
 
@@ -312,6 +332,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
 **Enjoy visualizing your code execution flows!** ⭐
 
 If you find this extension helpful, please consider:
+
 - ⭐ [Starring the repository](https://github.com/JianpingCAI/call-stack-to-plantuml)
 - 📝 [Writing a review](https://marketplace.visualstudio.com/items?itemName=JianpingCai.call-stack-to-plantuml&ssr=false#review-details)
 - 🐛 [Reporting issues](https://github.com/JianpingCAI/call-stack-to-plantuml/issues)
